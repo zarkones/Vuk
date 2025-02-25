@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"bytes"
+	"encoding/base64"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,6 +54,12 @@ func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), 
 		normalizedViewPath = strings.TrimSuffix(normalizedViewPath, VIEW_END)
 		normalizedViewPath = filepath.Join(config.DIR_VIEWS, normalizedViewPath)
 
+		if IsImage(viewPath) {
+			encoded := "data:image/png;base64," + base64.StdEncoding.EncodeToString(viewsMap[normalizedViewPath])
+			compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), []byte(encoded))
+			continue
+		}
+
 		compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), viewsMap[normalizedViewPath])
 	}
 
@@ -83,4 +90,19 @@ func extractFilePaths(text string) (paths []string) {
 	}
 
 	return paths
+}
+
+var imageExtensions = []string{
+	".png",
+	".jpg",
+	".jpeg",
+}
+
+func IsImage(path string) bool {
+	for _, ext := range imageExtensions {
+		if strings.HasSuffix(path, ext) {
+			return true
+		}
+	}
+	return false
 }
