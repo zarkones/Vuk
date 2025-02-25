@@ -49,18 +49,22 @@ func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), 
 
 	viewsPaths := extractFilePaths(string(compiled))
 
-	for _, viewPath := range viewsPaths {
-		normalizedViewPath := strings.TrimPrefix(viewPath, VIEW_START)
-		normalizedViewPath = strings.TrimSuffix(normalizedViewPath, VIEW_END)
-		normalizedViewPath = filepath.Join(config.DIR_VIEWS, normalizedViewPath)
+	for len(viewsPaths) != 0 {
+		for _, viewPath := range viewsPaths {
+			normalizedViewPath := strings.TrimPrefix(viewPath, VIEW_START)
+			normalizedViewPath = strings.TrimSuffix(normalizedViewPath, VIEW_END)
+			normalizedViewPath = filepath.Join(config.DIR_VIEWS, normalizedViewPath)
 
-		if IsImage(viewPath) {
-			encoded := "data:image/png;base64," + base64.StdEncoding.EncodeToString(viewsMap[normalizedViewPath])
-			compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), []byte(encoded))
-			continue
+			if IsImage(viewPath) {
+				encoded := "data:image/png;base64," + base64.StdEncoding.EncodeToString(viewsMap[normalizedViewPath])
+				compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), []byte(encoded))
+				continue
+			}
+
+			compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), viewsMap[normalizedViewPath])
 		}
 
-		compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), viewsMap[normalizedViewPath])
+		viewsPaths = extractFilePaths(string(compiled))
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
