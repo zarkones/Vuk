@@ -2,17 +2,19 @@ package renderer
 
 import (
 	"bytes"
-	"encoding/base64"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"vuk/config"
 )
 
 var (
 	layoutMap map[string]([]byte)
 	viewsMap  map[string]([]byte)
+	Images    = map[string]string{}
+	imgMux    = &sync.Mutex{}
 )
 
 func Init(layouts, views *[]string) (err error) {
@@ -55,16 +57,25 @@ func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), 
 			normalizedViewPath = strings.TrimSuffix(normalizedViewPath, VIEW_END)
 			normalizedViewPath = filepath.Join(config.DIR_VIEWS, normalizedViewPath)
 
-			if IsImage(viewPath) {
-				encoded := "data:image/png;base64," + base64.StdEncoding.EncodeToString(viewsMap[normalizedViewPath])
-				compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), []byte(encoded))
-				continue
-			}
-
 			compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), viewsMap[normalizedViewPath])
 		}
 
-		viewsPaths = extractFilePaths(string(compiled))
+		extractedFilePaths := extractFilePaths(string(compiled))
+		viewsPaths = []string{}
+		for _, path := range extractedFilePaths {
+			if IsImage(path) {
+				imgMux.Lock()
+				Images[path] = path
+				imgMux.Unlock()
+				continue
+			}
+			viewsPaths = append(viewsPaths, path)
+		}
+	}
+
+	for realPath, renderedPath := range Images {
+		compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+realPath+VIEW_END), []byte(renderedPath))
+		continue
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {

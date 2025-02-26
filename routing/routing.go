@@ -1,7 +1,10 @@
 package routing
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"vuk/config"
@@ -39,6 +42,19 @@ func Init(r *http.ServeMux, pages *[]string) (commonErr error) {
 	}
 
 	wg.Wait()
+
+	for realPath, renderredPath := range renderer.Images {
+		r.HandleFunc("GET /"+renderredPath, func() func(w http.ResponseWriter, r *http.Request) {
+			imgPath := filepath.Join(config.DIR_VIEWS, realPath)
+			image, err := os.ReadFile(imgPath)
+			if err != nil {
+				fmt.Println("failed to read image at:", imgPath)
+			}
+			return func(w http.ResponseWriter, r *http.Request) {
+				w.Write(image)
+			}
+		}())
+	}
 
 	return nil
 }
