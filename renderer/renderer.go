@@ -49,7 +49,12 @@ func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), 
 	// TODO: Proper handling of layouts, as there won't be just one default layout.
 	compiled := bytes.ReplaceAll(layoutMap[filepath.Join(config.DIR_LAYOUTS, "default.html")], []byte(MARK_PAGE), rawPage)
 
-	viewsPaths := extractFilePaths(string(compiled))
+	viewsPaths, imagePaths := extractFilePaths(string(compiled))
+	for _, imagePath := range imagePaths {
+		imgMux.Lock()
+		Images[imagePath] = imagePath
+		imgMux.Unlock()
+	}
 
 	for len(viewsPaths) != 0 {
 		for _, viewPath := range viewsPaths {
@@ -60,16 +65,11 @@ func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), 
 			compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+viewPath+VIEW_END), viewsMap[normalizedViewPath])
 		}
 
-		extractedFilePaths := extractFilePaths(string(compiled))
-		viewsPaths = []string{}
-		for _, path := range extractedFilePaths {
-			if IsImage(path) {
-				imgMux.Lock()
-				Images[path] = path
-				imgMux.Unlock()
-				continue
-			}
-			viewsPaths = append(viewsPaths, path)
+		viewsPaths, imagePaths = extractFilePaths(string(compiled))
+		for _, imagePath := range imagePaths {
+			imgMux.Lock()
+			Images[imagePath] = imagePath
+			imgMux.Unlock()
 		}
 	}
 
@@ -83,7 +83,8 @@ func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), 
 	}, nil
 }
 
-func extractFilePaths(text string) (paths []string) {
+func extractFilePaths(text string) (otherPaths []string, imagePaths []string) {
+	paths := []string{}
 	found := false
 
 	token := ""
@@ -104,7 +105,15 @@ func extractFilePaths(text string) (paths []string) {
 		}
 	}
 
-	return paths
+	for _, path := range paths {
+		if IsImage(path) {
+			imagePaths = append(imagePaths, path)
+			continue
+		}
+		otherPaths = append(otherPaths, path)
+	}
+
+	return otherPaths, imagePaths
 }
 
 var imageExtensions = []string{
