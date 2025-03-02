@@ -40,7 +40,7 @@ func Init(layouts, views *[]string) (err error) {
 	return nil
 }
 
-func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), err error) {
+func Render(page, endpointPath string) (handler func(w http.ResponseWriter, r *http.Request), err error) {
 	rawPage, err := os.ReadFile(page)
 	if err != nil {
 		return nil, err
@@ -77,6 +77,8 @@ func Render(page string) (handler func(w http.ResponseWriter, r *http.Request), 
 		compiled = bytes.ReplaceAll(compiled, []byte(VIEW_START+realPath+VIEW_END), []byte(renderedPath))
 		continue
 	}
+
+	AddRenderedItem(endpointPath, compiled)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write(compiled)

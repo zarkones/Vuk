@@ -21,23 +21,22 @@ func Init(r *http.ServeMux, pages *[]string) (commonErr error) {
 		func() {
 			defer wg.Done()
 
-			handler, err := renderer.Render(page)
+			normalizedPage := strings.TrimPrefix(page, config.DIR_PAGES)
+			normalizedPage = strings.TrimPrefix(normalizedPage, "/")
+			endpointPath := "/" + strings.TrimSuffix(normalizedPage, ".html")
+			if normalizedPage == "index.html" {
+				endpointPath = "/"
+			}
+
+			handler, err := renderer.Render(page, endpointPath)
 			if err != nil {
 				commonErr = err
 				return
 			}
 
-			normalizedPage := strings.TrimPrefix(page, config.DIR_PAGES)
-			normalizedPage = strings.TrimPrefix(normalizedPage, "/")
-
-			if normalizedPage == "index.html" {
-				r.HandleFunc("GET /", handler)
-				return
-			}
-
 			mux.Lock()
 			defer mux.Unlock()
-			r.HandleFunc("GET /"+strings.TrimSuffix(normalizedPage, ".html"), handler)
+			r.HandleFunc("GET "+endpointPath, handler)
 		}()
 	}
 
@@ -50,6 +49,7 @@ func Init(r *http.ServeMux, pages *[]string) (commonErr error) {
 			if err != nil {
 				fmt.Println("failed to read image at:", imgPath)
 			}
+			renderer.AddRenderedItem("/"+renderredPath, image)
 			return func(w http.ResponseWriter, r *http.Request) {
 				w.Write(image)
 			}

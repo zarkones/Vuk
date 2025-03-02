@@ -36,5 +36,7 @@ func Init(r *http.ServeMux) (err error) {
 		return err
 	}
 
+	renderer.ExportRenderedItems()
+
 	return nil
 }
