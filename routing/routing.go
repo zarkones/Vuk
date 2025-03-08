@@ -23,7 +23,7 @@ func Init(r *http.ServeMux, pages *[]string) (commonErr error) {
 
 			normalizedPage := strings.TrimPrefix(page, config.DIR_PAGES)
 			normalizedPage = strings.TrimPrefix(normalizedPage, "/")
-			endpointPath := "/" + strings.TrimSuffix(normalizedPage, ".html")
+			endpointPath := "/" + normalizedPage // strings.TrimSuffix(normalizedPage, ".html")
 			if normalizedPage == "index.html" {
 				endpointPath = "/"
 			}
@@ -33,6 +33,8 @@ func Init(r *http.ServeMux, pages *[]string) (commonErr error) {
 				commonErr = err
 				return
 			}
+
+			fmt.Println("Endpoint registered:", endpointPath)
 
 			mux.Lock()
 			defer mux.Unlock()
